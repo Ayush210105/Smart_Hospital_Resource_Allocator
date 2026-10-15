@@ -1,17 +1,22 @@
-# Triage Priority Logic
-def get_priority(condition):
-    emergency_keywords = ['heart attack', 'accident', 'stroke', 'emergency']
-    if condition.lower() in emergency_keywords:
-        return 1  # Priority 1 (High)
-    return 4      # Priority 4 (Normal)
+""" OS Engine Module (os_engine.py) Handles Priority Triage Mapping and Banker's Algorithm Resource Safety Check. """
 
-# Banker's Algorithm Simulation
-def check_bankers_safety(requested_resources, available_resources):
-    print("\n[OS ENGINE] Running Banker's Algorithm...")
-    
-    if requested_resources <= available_resources:
-        print("[OS ENGINE] System State: SAFE ✅ (No deadlock detected)")
-        return True
-    else:
-        print("[OS ENGINE] System State: UNSAFE ❌ (Deadlock Risk - Queuing process)")
+EMERGENCY_KEYWORDS = ["Heart Attack", "Accident", "Stroke", "Emergency"]
+
+
+def assign_priority(condition: str) -> int:
+    """ Maps emergency conditions to Priority 1 (High/Immediate) and general/routine conditions to Priority 4 (Normal FCFS). """
+    if not condition:
+        return 4
+    for keyword in EMERGENCY_KEYWORDS:
+        if keyword.lower() in condition.lower():
+            return 1
+    return 4
+
+
+def check_safety(requested_beds: int, available_beds: int) -> bool:
+    """ Simplified Banker's Algorithm safety check for ICU bed allocation. Ensures requested resources do not exceed currently available resources so the system remains in a safe state without deadlock. """
+    if requested_beds <= 0:
         return False
+    if available_beds >= requested_beds:
+        return True
+    return False
