@@ -58,7 +58,7 @@ def admit_patient():
                 "patient_id": patient_id,
                 "priority": priority,
                 "remaining_beds": tx_result.get("remaining_beds"),
-                "message": f"Patient {patient_id} admitted to ICU."
+                "message": f"Patient {patient_id} processed successfully."
             }), 200
         else:
             return jsonify({
@@ -121,14 +121,19 @@ def send_prescription():
 @app.route("/api/dispense_medicine", methods=["POST"])
 def dispense_medicine():
     data = request.get_json(silent=True) or {}
-    patient_id = data.get("patient_id", "P101")
-    medicine_name = data.get("medicine_name", "Aspirin")
+    patient_id = data.get("patient_id", "P101").strip()
+    medicine_name = data.get("medicine_name", "Aspirin").strip()
 
-    print(f"[PHARMACY DISPENSE] Dispensed '{medicine_name}' to Patient {patient_id}.")
+    with admission_load_lock if 'admission_load_lock' in globals() else admission_lock:
+        release_info_res = db_engine.release_bed_on_completion(patient_id)
+        remaining = db_engine.get_available_beds()
+
+    print(f"[PHARMACY DISPENSE] Dispensed '{medicine_name}' to Patient {patient_id}. {release_info_res['message']}")
     return jsonify({
-        "status": f"Medicine '{medicine_name}' dispensed to Patient {patient_id}",
+        "status": f"Medicine '{medicine_name}' dispensed to {patient_id} | {release_info_res['message']} | Available ICU Beds: {remaining}",
         "patient_id": patient_id,
-        "medicine_name": medicine_name
+        "medicine_name": medicine_name,
+        "remaining_beds": remaining
     }), 200
 
 
