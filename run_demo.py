@@ -1,4 +1,7 @@
-""" Sequential API Demo Driver (run_demo.py) Validates all Flask API routes and SQLite transaction paths sequentially. """
+"""
+Sequential API Demo Driver (run_demo.py)
+Validates all Flask API routes and SQLite transaction paths sequentially.
+"""
 
 import requests
 

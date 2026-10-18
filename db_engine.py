@@ -89,8 +89,8 @@ def get_available_beds() -> int:
 
 def allocate_bed_and_admit(patient_id: str, name: str, condition: str, priority: int, is_safe: bool):
     """
-    Allocates ICU bed ONLY for Priority 1 (Emergency) patients.
-    Priority 4 (Fever / Routine) patients are assigned to General Ward / OPD without using ICU beds.
+    Wraps ICU bed decrement and patient admission record insertion in an atomic
+    SQLite transaction with commit/rollback handling.
     """
     conn = get_connection()
     try:
@@ -101,23 +101,15 @@ def allocate_bed_and_admit(patient_id: str, name: str, condition: str, priority:
         row = cursor.fetchone()
         available = int(row["available_count"]) if row else 0
 
-        # Non-emergency (Fever / General Routine) -> General Ward (No ICU bed consumed)
-        if priority == 4:
-            status = "General Ward / OPD Assigned (No ICU Bed Required)"
-            bed_allocated = 0
-            admitted = True
-        # Emergency (Priority 1) -> Allocate ICU Bed if safe
-        elif is_safe and available >= 1:
+        if is_safe and available >= 1:
             cursor.execute(
                 "UPDATE resources SET available_count = available_count - 1 WHERE resource_name = 'ICU_BED'"
             )
             status = "ICU Bed Allocated"
             bed_allocated = 1
-            admitted = True
         else:
             status = "Queued (Waiting for ICU Bed)"
             bed_allocated = 0
-            admitted = False
 
         cursor.execute("""
             INSERT OR REPLACE INTO patients (patient_id, name, condition, priority, status, bed_allocated)
@@ -126,7 +118,7 @@ def allocate_bed_and_admit(patient_id: str, name: str, condition: str, priority:
 
         conn.commit()
         return {
-            "admitted": admitted,
+            "admitted": bed_allocated == 1,
             "status": status,
             "remaining_beds": available - bed_allocated
         }

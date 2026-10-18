@@ -1,4 +1,9 @@
-""" Streamlit Role-Based Frontend (streamlit_app.py) Connects to the Flask REST API at http://127.0.0.1:5000/api. Automatically starts the Flask server in a background thread if it is not already running, so this project works both locally AND on Streamlit Cloud / mobile devices! """
+"""
+Streamlit Role-Based Frontend (streamlit_app.py)
+Connects to the Flask REST API at http://127.0.0.1:5000/api.
+Automatically starts the Flask server in a background thread if it is not already running,
+so this project works both locally AND on Streamlit Cloud / mobile devices!
+"""
 
 import threading
 import time
@@ -11,7 +16,10 @@ BASE_URL = "http://127.0.0.1:5000/api"
 
 @st.cache_resource
 def ensure_backend_server():
-    """ Checks if the Flask API server is reachable on port 5000. If not (e.g., on Streamlit Cloud), starts app.py in a background daemon thread. """
+    """
+    Checks if the Flask API server is reachable on port 5000.
+    If not (e.g., on Streamlit Cloud), starts app.py in a background daemon thread.
+    """
     try:
         r = requests.get(f"{BASE_URL}/health", timeout=1)
         if r.status_code == 200:
