@@ -1,4 +1,7 @@
-""" Database Engine Module (db_engine.py) Handles SQLite persistence, resource tables, and transactional ICU bed allocation. """
+"""
+Database Engine Module (db_engine.py)
+Handles SQLite persistence, resource tables, and transactional ICU bed allocation.
+"""
 
 import sqlite3
 import os
@@ -17,10 +20,45 @@ def init_db():
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute(""" CREATE TABLE IF NOT EXISTS resources ( resource_name TEXT PRIMARY KEY, total_count INTEGER NOT NULL, available_count INTEGER NOT NULL ) """)
-        cursor.execute(""" CREATE TABLE IF NOT EXISTS patients ( patient_id TEXT PRIMARY KEY, name TEXT NOT NULL, condition TEXT NOT NULL, priority INTEGER NOT NULL, status TEXT NOT NULL, bed_allocated INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ) """)
-        cursor.execute(""" CREATE TABLE IF NOT EXISTS lab_tests ( id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, doctor_id TEXT NOT NULL, test_type TEXT, result TEXT, status TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ) """)
-        cursor.execute(""" CREATE TABLE IF NOT EXISTS prescriptions ( id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id TEXT NOT NULL, doctor_id TEXT NOT NULL, medicine_name TEXT NOT NULL, status TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ) """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS resources (
+                resource_name TEXT PRIMARY KEY,
+                total_count INTEGER NOT NULL,
+                available_count INTEGER NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS patients (
+                patient_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                condition TEXT NOT NULL,
+                priority INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                bed_allocated INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lab_tests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id TEXT NOT NULL,
+                doctor_id TEXT NOT NULL,
+                test_type TEXT,
+                result TEXT,
+                status TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prescriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id TEXT NOT NULL,
+                doctor_id TEXT NOT NULL,
+                medicine_name TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
         # Seed default ICU beds if not present
         cursor.execute("SELECT available_count FROM resources WHERE resource_name = 'ICU_BED'")
@@ -50,7 +88,10 @@ def get_available_beds() -> int:
 
 
 def allocate_bed_and_admit(patient_id: str, name: str, condition: str, priority: int, is_safe: bool):
-    """ Wraps ICU bed decrement and patient admission record insertion in an atomic SQLite transaction with commit/rollback handling. """
+    """
+    Allocates ICU bed ONLY for Priority 1 (Emergency) patients.
+    Priority 4 (Fever / Routine) patients are assigned to General Ward / OPD without using ICU beds.
+    """
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -60,21 +101,32 @@ def allocate_bed_and_admit(patient_id: str, name: str, condition: str, priority:
         row = cursor.fetchone()
         available = int(row["available_count"]) if row else 0
 
-        if is_safe and available >= 1:
+        # Non-emergency (Fever / General Routine) -> General Ward (No ICU bed consumed)
+        if priority == 4:
+            status = "General Ward / OPD Assigned (No ICU Bed Required)"
+            bed_allocated = 0
+            admitted = True
+        # Emergency (Priority 1) -> Allocate ICU Bed if safe
+        elif is_safe and available >= 1:
             cursor.execute(
                 "UPDATE resources SET available_count = available_count - 1 WHERE resource_name = 'ICU_BED'"
             )
             status = "ICU Bed Allocated"
             bed_allocated = 1
+            admitted = True
         else:
             status = "Queued (Waiting for ICU Bed)"
             bed_allocated = 0
+            admitted = False
 
-        cursor.execute(""" INSERT OR REPLACE INTO patients (patient_id, name, condition, priority, status, bed_allocated) VALUES (?, ?, ?, ?, ?, ?) """, (patient_id, name, condition, priority, status, bed_allocated))
+        cursor.execute("""
+            INSERT OR REPLACE INTO patients (patient_id, name, condition, priority, status, bed_allocated)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (patient_id, name, condition, priority, status, bed_allocated))
 
         conn.commit()
         return {
-            "admitted": bed_allocated == 1,
+            "admitted": admitted,
             "status": status,
             "remaining_beds": available - bed_allocated
         }
