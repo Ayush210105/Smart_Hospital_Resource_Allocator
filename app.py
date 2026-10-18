@@ -1,4 +1,5 @@
-""" Flask Backend API (app.py) Exposes REST API endpoints for Admission, Lab Tests, Reports, and Pharmacy. Protected by Python threading.Lock for concurrency safety. """
+""" Flask Backend API (app.py) Exposes REST API endpoints for Admission, Lab Tests, Reports, and Pharmacy. Protected by Python threading.Lock for concurrency safety. 
+ task completed by team Lead: Aditya Rawat."""
 
 import threading
 from flask import Flask, request, jsonify
@@ -151,3 +152,4 @@ def patient_status(patient_id):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+"""end of the modules """
