@@ -60,7 +60,7 @@ def init_db():
             )
         """)
 
-        # Seed default ICU beds if not present
+        # Seed default ICU beds if not present (Total 10, Available 5)
         cursor.execute("SELECT available_count FROM resources WHERE resource_name = 'ICU_BED'")
         row = cursor.fetchone()
         if row is None:
@@ -137,6 +137,49 @@ def allocate_bed_and_admit(patient_id: str, name: str, condition: str, priority:
             "status": "Error",
             "error": str(e)
         }
+    finally:
+        conn.close()
+
+
+def release_bed_on_completion(patient_id: str):
+    """
+    Releases the ICU bed (+1) when treatment/pharmacy completion is triggered for an allocated patient.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("BEGIN IMMEDIATE")
+
+        cursor.execute(
+            "SELECT bed_allocated, status FROM patients WHERE patient_id = ?",
+            (patient_id,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            conn.rollback()
+            return {"released": False, "message": "Patient not found"}
+
+        if int(row["bed_allocated"]) == 1:
+            cursor.execute(
+                "UPDATE resources SET available_count = available_count + 1 WHERE resource_name = 'ICU_BED' AND available_count < total_count"
+            )
+            cursor.execute(
+                "UPDATE patients SET bed_allocated = 0, status = 'Discharged (ICU Bed Released)' WHERE patient_id = ?",
+                (patient_id,)
+            )
+            conn.commit()
+            return {"released": True, "message": "ICU Bed Released (+1)"}
+        else:
+            cursor.execute(
+                "UPDATE patients SET status = 'Treatment Completed (OPD)' WHERE patient_id = ?",
+                (patient_id,)
+            )
+            conn.commit()
+            return {"released": False, "message": "No ICU bed was allocated to this patient"}
+    except Exception as e:
+        conn.rollback()
+        return {"released": False, "message": str(e)}
     finally:
         conn.close()
 
