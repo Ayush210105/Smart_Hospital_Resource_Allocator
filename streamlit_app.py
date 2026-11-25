@@ -38,7 +38,7 @@ ensure_backend_server()
 
 st.set_page_config(page_title="Smart Hospital System", page_icon="🏥", layout="wide")
 
-st.title("🏥 Smart Hospital Resource Allocator (Phase-III Complete)")
+st.title(" Smart Hospital Resource Allocator (Phase-III Complete)")
 
 # Sidebar navigation and Multi-Resource Live Counters
 dashboard = st.sidebar.radio(
@@ -53,14 +53,14 @@ dashboard = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🧮 Multi-Resource Pool (SQLite)")
+st.sidebar.subheader(" Multi-Resource Pool (SQLite)")
 res_pool = db_engine.get_all_resources()
 c1, c2, c3 = st.sidebar.columns(3)
-c1.metric("🛏️ ICU", f"{res_pool.get('ICU_BED', {}).get('available', 0)}/{res_pool.get('ICU_BED', {}).get('total', 10)}")
-c2.metric("🫁 Vent", f"{res_pool.get('VENTILATOR', {}).get('available', 0)}/{res_pool.get('VENTILATOR', {}).get('total', 6)}")
-c3.metric("🧪 Oxy", f"{res_pool.get('OXYGEN', {}).get('available', 0)}/{res_pool.get('OXYGEN', {}).get('total', 15)}")
+c1.metric(" ICU", f"{res_pool.get('ICU_BED', {}).get('available', 0)}/{res_pool.get('ICU_BED', {}).get('total', 10)}")
+c2.metric(" Vent", f"{res_pool.get('VENTILATOR', {}).get('available', 0)}/{res_pool.get('VENTILATOR', {}).get('total', 6)}")
+c3.metric(" Oxy", f"{res_pool.get('OXYGEN', {}).get('available', 0)}/{res_pool.get('OXYGEN', {}).get('total', 15)}")
 
-if st.sidebar.button("🔄 Reset Simulation DB"):
+if st.sidebar.button(" Reset Simulation DB"):
     requests.post(f"{BASE_URL}/reset", timeout=5)
     st.rerun()
 
@@ -72,7 +72,7 @@ records = db_engine.get_all_queues_and_records()
 # 1. ADMIN / RECEPTION COUNTER UI
 # ========================================================
 if dashboard == "1. Admin / Reception Counter":
-    st.header("📋 Patient Registration & Multi-Resource OS Allocator")
+    st.header(" Patient Registration & Multi-Resource OS Allocator")
 
     col1, col2 = st.columns(2)
 
@@ -100,29 +100,29 @@ if dashboard == "1. Admin / Reception Counter":
                 if data.get("status") == "Success":
                     if data.get("priority") == 4:
                         st.info(
-                            f"🏥 Patient {patient_id} routed to General Ward / OPD. "
+                            f" Patient {patient_id} routed to General Ward / OPD. "
                             f"Priority: {data.get('priority')} | ICU Resources Unchanged."
                         )
                     else:
                         seq_str = " -> ".join(data.get("safe_sequence", []))
                         st.success(
-                            f"✅ Emergency Patient {patient_id} Admitted! {data.get('allocation_detail')} | "
+                            f" Emergency Patient {patient_id} Admitted! {data.get('allocation_detail')} | "
                             f"Safe Sequence: [{seq_str}]"
                         )
                 elif data.get("status") == "Queued":
                     st.warning(
-                        f"⚠️ Banker's Safety Check Blocked Allocation! "
+                        f"Banker's Safety Check Blocked Allocation! "
                         f"Patient {patient_id} placed in Priority {data.get('priority')} Waitlist Queue."
                     )
                 else:
-                    st.error(f"❌ Allocation Failed: {data.get('message')}")
+                    st.error(f" Allocation Failed: {data.get('message')}")
             except Exception as e:
                 st.error(f"Failed to connect to backend server: {e}")
 
     with col2:
-        st.subheader("⚡ Automated Concurrency Stress Test")
+        st.subheader(" Automated Concurrency Stress Test")
         st.caption("Fires 8 parallel threads simultaneously to verify `threading.Lock` and SQLite Atomicity.")
-        if st.button("🚀 Run 8-Thread Parallel Admission Test"):
+        if st.button(" Run 8-Thread Parallel Admission Test"):
             def fire_request(idx):
                 p_cond = "Heart Attack" if idx % 2 == 0 else "Accident"
                 r = requests.post(
@@ -138,12 +138,12 @@ if dashboard == "1. Admin / Reception Counter":
             admitted_cnt = sum(1 for r in results if r.get("status") == "Success")
             queued_cnt = sum(1 for r in results if r.get("status") == "Queued")
             st.success(
-                f"✅ Concurrency Test Passed! 0 Race Conditions. "
+                f" Concurrency Test Passed! 0 Race Conditions. "
                 f"Safely Admitted: {admitted_cnt} | Safely Queued: {queued_cnt} | "
                 f"Remaining ICU Beds: {db_engine.get_available_beds()}"
             )
 
-    st.subheader("📊 Live Patient & Resource Allocation Table (SQLite)")
+    st.subheader(" Live Patient & Resource Allocation Table (SQLite)")
     if records["patients"]:
         st.dataframe(records["patients"], use_container_width=True)
     else:
@@ -153,7 +153,7 @@ if dashboard == "1. Admin / Reception Counter":
 # 2. DOCTOR DASHBOARD
 # ========================================================
 elif dashboard == "2. Doctor Dashboard":
-    st.header("👨‍⚕️ Doctor Consultation & Ordering Module")
+    st.header(" Doctor Consultation & Ordering Module")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -168,7 +168,7 @@ elif dashboard == "2. Doctor Dashboard":
                 json={"doctor_id": doctor_id, "patient_id": p_id_test, "test_type": test_type},
                 timeout=5
             )
-            st.success(f"✅ {r.json().get('status')}")
+            st.success(f" {r.json().get('status')}")
 
     with col2:
         st.subheader("Write e-Prescription")
@@ -182,13 +182,13 @@ elif dashboard == "2. Doctor Dashboard":
                 json={"doctor_id": doc_id_rx, "patient_id": p_id_rx, "medicine_name": medicine},
                 timeout=5
             )
-            st.success(f"✅ {r.json().get('status')}")
+            st.success(f" {r.json().get('status')}")
 
 # ========================================================
 # 3. LAB / RADIOLOGY DASHBOARD
 # ========================================================
 elif dashboard == "3. Lab / Radiology Dashboard":
-    st.header("🔬 Lab & Radiology Operations (Persistent SQLite)")
+    st.header(" Lab & Radiology Operations (Persistent SQLite)")
     patient_id = st.text_input("Patient ID", value="P101")
     doctor_id = st.text_input("Assigned Doctor ID", value="D505")
     result = st.text_area("Test Results / Findings", value="Critical Blockage found in imaging.")
@@ -199,9 +199,9 @@ elif dashboard == "3. Lab / Radiology Dashboard":
             json={"patient_id": patient_id, "doctor_id": doctor_id, "result": result},
             timeout=5
         )
-        st.success(f"✅ {r.json().get('status')}")
+        st.success(f" {r.json().get('status')}")
 
-    st.subheader("🧾 Saved Lab Records in SQLite")
+    st.subheader(" Saved Lab Records in SQLite")
     if records["lab_tests"]:
         st.dataframe(records["lab_tests"], use_container_width=True)
 
@@ -209,7 +209,7 @@ elif dashboard == "3. Lab / Radiology Dashboard":
 # 4. PHARMACY DASHBOARD
 # ========================================================
 elif dashboard == "4. Pharmacy Dashboard":
-    st.header("💊 Pharmacy Inventory, Dispensing & Auto-Queue Promotion")
+    st.header(" Pharmacy Inventory, Dispensing & Auto-Queue Promotion")
     patient_id = st.text_input("Patient ID", value="P101")
     medicine = st.text_input("Medicine Name", value="Aspirin")
 
@@ -219,9 +219,9 @@ elif dashboard == "4. Pharmacy Dashboard":
             json={"doctor_id": "D505", "patient_id": patient_id, "medicine_name": medicine},
             timeout=5
         )
-        st.success(f"✅ {r.json().get('status')}")
+        st.success(f" {r.json().get('status')}")
 
-    st.subheader("🧾 Saved Pharmacy Prescriptions in SQLite")
+    st.subheader(" Saved Pharmacy Prescriptions in SQLite")
     if records["prescriptions"]:
         st.dataframe(records["prescriptions"], use_container_width=True)
 
@@ -229,7 +229,7 @@ elif dashboard == "4. Pharmacy Dashboard":
 # 5. PATIENT PORTAL & LIVE QUEUE
 # ========================================================
 elif dashboard == "5. Patient Portal & Live Queue":
-    st.header("📱 Live Patient Status & Priority Waitlist Queue")
+    st.header(" Live Patient Status & Priority Waitlist Queue")
     patient_id = st.text_input("Enter Patient ID to Track Live Status", value="P101")
 
     if st.button("Check Live Status", type="primary"):
@@ -245,15 +245,15 @@ elif dashboard == "5. Patient Portal & Live Queue":
             )
             if data.get("queue_position", 0) > 0:
                 st.warning(
-                    f"⏳ **Live Waitlist Queue Position:** #{data.get('queue_position')} "
+                    f" **Live Waitlist Queue Position:** #{data.get('queue_position')} "
                     f"out of {data.get('total_in_queue')} waiting patients."
                 )
             col_a, col_b = st.columns(2)
             with col_a:
-                st.write("🔬 **Patient's Lab Reports:**")
+                st.write(" **Patient's Lab Reports:**")
                 st.json(data.get("lab_tests", []))
             with col_b:
-                st.write("💊 **Patient's Prescriptions:**")
+                st.write(" **Patient's Prescriptions:**")
                 st.json(data.get("prescriptions", []))
         else:
             st.error(data.get("status"))
