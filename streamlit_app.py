@@ -38,7 +38,7 @@ ensure_backend_server()
 
 st.set_page_config(page_title="Smart Hospital System", page_icon="🏥", layout="wide")
 
-st.title(" Smart Hospital Resource Allocator (Phase-III Complete)")
+st.title(" Smart Hospital Resource Allocator ")
 
 # Sidebar navigation and Multi-Resource Live Counters
 dashboard = st.sidebar.radio(
