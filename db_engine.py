@@ -1,9 +1,3 @@
-"""
-Database Engine Module (db_engine.py)
-Handles SQLite persistence, Multi-Resource Banker's allocation, Persistent Lab & Pharmacy records,
-and Priority + FCFS Waitlist Queue auto-promotion.
-"""
-
 import sqlite3
 import os
 from typing import Dict, List, Optional
@@ -19,7 +13,6 @@ def get_connection():
 
 
 def init_db():
-    """Initializes and migrates SQLite tables for multi-resource allocation, patients, labs, and pharmacy."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -45,7 +38,6 @@ def init_db():
             )
         """)
 
-        # Safe schema migration if an older hospital.db already exists
         for col_sql in [
             "ALTER TABLE patients ADD COLUMN vent_allocated INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE patients ADD COLUMN oxy_allocated INTEGER NOT NULL DEFAULT 0",
@@ -78,7 +70,6 @@ def init_db():
             )
         """)
 
-        # Seed multi-resources: ICU_BED, VENTILATOR, OXYGEN
         default_resources = [
             ("ICU_BED", 10, 5),
             ("VENTILATOR", 6, 3),
@@ -100,7 +91,6 @@ def init_db():
 
 
 def get_all_resources() -> Dict[str, Dict[str, int]]:
-    """Returns total and available counts for all hospital resources."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -118,7 +108,6 @@ def get_all_resources() -> Dict[str, Dict[str, int]]:
 
 
 def get_available_beds() -> int:
-    """Returns currently available ICU beds from SQLite."""
     res = get_all_resources()
     return res.get("ICU_BED", {}).get("available", 0)
 
@@ -131,9 +120,6 @@ def allocate_bed_and_admit(
     is_safe: bool = True,
     hospital_id: str = "GEIMS-DDN-01"
 ):
-    """
-    Executes Multi-Resource Banker's safety check and atomic SQLite resource allocation.
-    """
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -197,15 +183,11 @@ def allocate_bed_and_admit(
 
 
 def _promote_waiting_patients_in_tx(cursor):
-    """
-    OS Scheduler: Automatically promotes highest-priority (Priority 1 -> 4, then FCFS)
-    queued patients when ICU resources are released.
-    """
     cursor.execute("""
         SELECT patient_id, name, condition, priority
         FROM patients
         WHERE status LIKE 'Queued%'
-        ORDER BY priority ASC, created_at ASC
+        ORDER BY priority ASC, created_at ASC, rowid ASC
     """)
     waiting_list = cursor.fetchall()
     promoted = []
@@ -234,10 +216,6 @@ def _promote_waiting_patients_in_tx(cursor):
 
 
 def release_bed_on_completion(patient_id: str):
-    """
-    Releases all allocated resources (ICU Bed, Ventilator, Oxygen) when a patient is discharged
-    and triggers the OS Priority Queue Scheduler to promote waiting patients.
-    """
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -289,7 +267,6 @@ def release_bed_on_completion(patient_id: str):
 
 
 def save_lab_request(patient_id: str, doctor_id: str, test_type: str):
-    """Saves a doctor's lab test request persistently in SQLite."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -304,7 +281,6 @@ def save_lab_request(patient_id: str, doctor_id: str, test_type: str):
 
 
 def complete_lab_report(patient_id: str, doctor_id: str, result: str):
-    """Updates pending lab test with findings or creates a completed lab record in SQLite."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -330,7 +306,6 @@ def complete_lab_report(patient_id: str, doctor_id: str, result: str):
 
 
 def save_prescription(patient_id: str, doctor_id: str, medicine_name: str):
-    """Saves an e-Prescription persistently in SQLite."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -345,7 +320,6 @@ def save_prescription(patient_id: str, doctor_id: str, medicine_name: str):
 
 
 def mark_prescription_dispensed(patient_id: str, medicine_name: str):
-    """Marks a patient's prescription as Dispensed in SQLite."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -370,7 +344,6 @@ def mark_prescription_dispensed(patient_id: str, medicine_name: str):
 
 
 def get_patient_status(patient_id: str) -> Optional[Dict]:
-    """Fetches live patient status, queue position, lab reports, and prescriptions from SQLite."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -386,11 +359,10 @@ def get_patient_status(patient_id: str) -> Optional[Dict]:
 
         patient_data = dict(row)
 
-        # Calculate live queue position if patient is waiting
         cursor.execute("""
             SELECT patient_id FROM patients
             WHERE status LIKE 'Queued%'
-            ORDER BY priority ASC, created_at ASC
+            ORDER BY priority ASC, created_at ASC, rowid ASC
         """)
         queue_ids = [r["patient_id"] for r in cursor.fetchall()]
         patient_data["queue_position"] = (queue_ids.index(patient_id) + 1) if patient_id in queue_ids else 0
@@ -414,11 +386,10 @@ def get_patient_status(patient_id: str) -> Optional[Dict]:
 
 
 def get_all_queues_and_records() -> Dict[str, List[Dict]]:
-    """Returns live tables for Admin, Lab, Pharmacy, and Patient Queue dashboards."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM patients ORDER BY priority ASC, created_at DESC")
+        cursor.execute("SELECT * FROM patients ORDER BY priority ASC, created_at DESC, rowid DESC")
         patients = [dict(r) for r in cursor.fetchall()]
 
         cursor.execute("SELECT * FROM lab_tests ORDER BY id DESC LIMIT 20")
@@ -433,7 +404,6 @@ def get_all_queues_and_records() -> Dict[str, List[Dict]]:
 
 
 def reset_simulation_resources():
-    """Resets resource counts and clears tables for clean demo/testing runs."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
